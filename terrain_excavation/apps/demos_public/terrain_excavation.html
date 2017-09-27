@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">  <!-- Use Chrome Frame in IE -->
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <meta name="description" content="Sample of Subspace with jQuery UI.">
+    <title>Subspace</title>
+    <!-- jQuery -->
+    <script src="../shared/third_party/jquery-ui-1.9.2.custom/jquery-1.12.4.min.js"></script>
+
+    <!-- jQuery UI -->
+    <link rel="stylesheet" href="../shared/third_party/jquery-ui-1.9.2.custom/css/smoothness/jquery-ui-1.9.2.custom.min.css" />
+    <script src="../shared/third_party/jquery-ui-1.12.1.custom/jquery-ui.min.js"></script>
+
+	<!-- Subspace -->
+    <script type="text/javascript" src="../../build/Cesium.js"></script>
+    <script type="text/javascript" src="../../build/subspace.js"></script>
+    <!--<script type="text/javascript" src="../../portal/google_analytics.js"></script>-->
+
+    <link rel="stylesheet" href="../shared/viewer/CesiumViewer.css" media="screen">
+    <script src="../shared/viewer/subspaceViewer.js"></script>
+    <script src="../shared/menu/menu.js"></script>
+
+</head>
+<body data-sandcastle-bucket="bucket-jqueryui.html" data-sandcastle-title="Cesium + jQuery UI">
+<style>
+    .fullSize {
+	    font-family: sans-serif;
+	    font-size: 16px;
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        border: none;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+    }
+    .myslider {
+        width:180px;
+    }
+    .mydialog {
+        display: block;
+        float: left;
+        width: 250px;
+        padding: 7px;
+        border-radius: 5px;
+        margin: 10px 10px;
+        color: #eee;
+    }
+</style>
+
+<div id="cesiumContainer" class="fullSize"></div>
+
+<div id= "dialog" class="mydialog">
+    <h2>Controls</h2>
+    <p>Adjust the size and depth of the push region.</p>
+    <table>
+    <tr><td class="action" width=90px>Depth</td><td><div id="depthSlider" class="myslider"></div></td></tr>
+    <tr><td class="action">Width</td><td><div id="widthSlider" class="myslider"></div></td></tr>
+    </table>
+</div>
+
+
+<script>
+/*global $*/
+(function () {
+    "use strict";
+
+    var e = new Cesium.Cartesian3(-4317141.630836136, 2678408.527110851, -3910430.41298421);
+    var v = new Cesium.Cartesian3(0.22497937203312904, 0.10327489426837733, 0.9688749033664964);
+    var u = new Cesium.Cartesian3(-0.721367160719324, 0.6860925362000091, 0.09437399644873273);
+    var start = { eye: e, view: v, up: u };
+
+    //set options for the viewer
+    var options = {
+        timeline: false,
+        animation: false,
+        //subspace viewer options
+//        showTerrain: true,
+        startPosition: start,
+        homeButton: start,
+    };
+
+    var viewer = subspaceViewer('cesiumContainer', options);
+    var scene = viewer.scene;
+    var cb = scene.getPrimitives().getCentralBody();
+
+    // add tms layer...
+   	var tms = new Cesium.TileMapServiceImageryProvider({
+		url : '../../data/public/images/tms-radiation',
+		fileExtension : 'png',
+		maximumLevel : 9,
+		credit : 'NICTA Geothermal Radiation Map',
+		extent : new Cesium.Extent(Cesium.Math.toRadians(144.0),
+				Cesium.Math.toRadians(-39.0), Cesium.Math.toRadians(148.0),
+				Cesium.Math.toRadians(-35.0))
+	});
+	cb.getImageryLayers().addImageryProvider(tms);
+    
+    {
+        // We only want to display the TMS layer in the pushed area.
+        // If clipped, this layer will not be tinted.
+        tms.pushClip = 1.0;
+
+		// Set up central body for ground push
+		// Amount of push
+    	cb.pushValue = -10000.0;
+		// Extent of push region
+    	cb.pushExtent = new Cesium.Cartesian4(2.455218552588027, -0.6559983327168135, 2.56483615035986, -0.6490923789392361);
+		// Smooth the edge transition
+    	cb.pushBlend = 0.0004;
+		
+		// Tint the push area
+		cb.pushBaseTint = new Cesium.Cartesian3(0.5, 0.4, 0.3);
+		cb.pushSidesTint = new Cesium.Cartesian3(0.7, 0.6, 0.5);
+		
+    	// Expand the bounding box of the tiles to avoid render artefacts
+    	cb._surface.boundingVolumeExtend = 10000.0;
+    }
+    
+    // Set up slider UI
+    function uiChanged()
+    {
+    	cb.pushValue = $( "#depthSlider" ).slider( "value" ) * 10000.0;
+    	var widthValue = $( "#widthSlider" ).slider( "value" );
+		var mid = 2.582;
+		var dx = 0.005 * widthValue;
+    	cb.pushExtent = new Cesium.Cartesian4(mid-dx, -0.655, mid+dx, -0.645);
+    }
+    
+    $( "#depthSlider" ).slider({min:-2,max:0,value:-1,step: 0.001,slide:uiChanged});
+    $( "#widthSlider" ).slider({min:0,max:1,value:0.75,step: 0.001,slide:uiChanged});
+    
+    // force an update based on UI default values
+    uiChanged();
+
+}());
+</script>
+</body>
+</html>
